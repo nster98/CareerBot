@@ -15,7 +15,7 @@ const restify = require('restify');
 const { BotFrameworkAdapter } = require('botbuilder');
 
 // This bot's main dialog.
-const { EchoBot } = require('./bot');
+const { EchoBot } = require('./bots/bot.js');
 
 // Create HTTP server
 const server = restify.createServer();
