@@ -1,5 +1,7 @@
 const {
     ComponentDialog,
+    DialogSet,
+    DialogTurnStatus,
     TextPrompt,
     WaterfallDialog
 } = require('botbuilder-dialogs');
@@ -10,9 +12,8 @@ const TEXT_PROMPT = 'TEXT_PROMPT';
 const WATERFALL_DIALOG = 'WATERFALL_DIALOG';
 
 class ToppingsDialog extends ComponentDialog {
-    constructor() {
+    constructor(userState) {
         super(TOPPINGS_DIALOG);
-        console.log("Did i even get here");
 
         this.addDialog(new TextPrompt(TEXT_PROMPT));
         this.addDialog(new WaterfallDialog(WATERFALL_DIALOG), [
@@ -24,6 +25,7 @@ class ToppingsDialog extends ComponentDialog {
     }
 
     async toppingsStep(step) {
+        console.log("toppingsStep finally?");
         return await step.prompt(TEXT_PROMPT, "toppingStep");
     }
 
