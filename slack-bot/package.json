@@ -4,14 +4,15 @@
   "description": "Career Place Slack Bot",
   "main": "index.js",
   "dependencies": {
+    "bot-context": "^0.2.6",
     "botkit": "^4.9.0",
     "dotenv": "^8.2.0",
     "http": "^0.0.1-security",
     "path": "^0.12.7",
-    "restify": "^8.5.1",
     "request": "^2.88.2",
-    "slackbots": "^1.2.0",
-    "slackbot": "^0.0.2"
+    "restify": "^8.5.1",
+    "slackbot": "^0.0.2",
+    "slackbots": "^1.2.0"
   },
   "devDependencies": {},
   "scripts": {

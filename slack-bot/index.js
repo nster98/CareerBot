@@ -2,6 +2,7 @@
 const express = require('express');
 const request = require('request');
 const path = require('path');
+const { create } = require('domain');
 
 const app = express();
 app.use(express.json());
@@ -9,6 +10,22 @@ const PORT = 3000;
 
 const ENV_FILE = path.join(__dirname, '.env');
 require('dotenv').config({ path: ENV_FILE });
+
+const database = {};
+database["botInfo"] = { channel: process.env.CHANNEL};
+
+const Steps = {
+    INIT_STEP: 'initStep',
+    TYPE_STEP: 'typeStep',
+    TOPPINGS_STEP: 'toppingsStep',
+    ADDRESS_STEP: 'addressStep',
+    SUMMARY_STEP: 'summaryStep'
+};
+
+let currStep = Steps.INIT_STEP;
+
+// Send beginning message
+sendMessage(createMessage(database["botInfo"], "Hi, my name is PizzaBot, what can I get you?"));
 
 app.post('/slack/events', (req, res) => {
 
@@ -32,6 +49,31 @@ app.post('/slack/events', (req, res) => {
         // Check if this message was sent in an IM only
         if (payload.event.channel_type == 'im' && payload.event.type == 'message') {
 
+            let msg;
+
+            if (currStep == Steps.INIT_STEP)
+            {
+                if (!database[payload.event.user])
+                    database[payload.event.user] = {};
+
+                // Do the CLI thing here
+            }
+            else if (currStep == Steps.TYPE_STEP) 
+            {
+
+            }
+            else if (currStep == Steps.TOPPINGS_STEP) 
+            {
+                
+            }
+            else if (currStep == Steps.ADDRESS_STEP) 
+            {
+                
+            }
+            else if (currStep == Steps.SUMMARY_STEP) 
+            {
+                
+            }
             // Create the message you want the bot to say
             msg = createMessage(payload.event, `Echo: ${payload.event.text}`);
     
