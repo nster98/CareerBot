@@ -22,8 +22,6 @@ const Steps = {
     SUMMARY_STEP: 'summaryStep'
 };
 
-let currStep = Steps.INIT_STEP;
-
 // Send beginning message
 sendMessage(createMessage(database["botInfo"], "Hi, my name is PizzaBot, what can I get you?"));
 
@@ -41,7 +39,21 @@ app.post('/slack/events', (req, res) => {
     // Get the request which contains the message
     let payload = req.body;
 
-    console.log("Payload: ", payload.event);
+    //console.log("Payload: ", payload.event);
+
+    /*
+        Algorithm for sending sequential messages
+
+        Check if this is a user sending a message
+            Make sure that the user exists
+                If not, make a new user
+            Check for a step that requires information from the user and update database with text
+            Go through steps
+                If a field doesn't exist, send a message letting the user know
+                If a field does exist, go to the next step
+            Send the message
+            Send a 200 response to server
+    */
 
     // Check if this is a message from a user and not from a bot
     if (!payload.event.bot_profile) {
@@ -51,31 +63,86 @@ app.post('/slack/events', (req, res) => {
 
             let msg;
 
-            if (currStep == Steps.INIT_STEP)
-            {
-                if (!database[payload.event.user])
-                    database[payload.event.user] = {};
+            if (!database[payload.event.user]) {
+                database[payload.event.user] = {};
+                database[payload.event.user].currStep = Steps.INIT_STEP;   
+            }
 
-                // Do the CLI thing here
-            }
-            else if (currStep == Steps.TYPE_STEP) 
-            {
+            let user = database[payload.event.user];
 
+            console.log("Text: ", payload.event.text);
+
+            // When coming back after sending a message, update the database with the user input
+            if (user.currStep == Steps.TYPE_STEP) {
+                if (!user.typePizza){
+                    user.typePizza = payload.event.text;
+                }
             }
-            else if (currStep == Steps.TOPPINGS_STEP) 
-            {
-                
+            if (user.currStep == Steps.TOPPINGS_STEP) {
+                if (!user.toppings){
+                    user.toppings = payload.event.text;
+                }
             }
-            else if (currStep == Steps.ADDRESS_STEP) 
-            {
-                
+            if (user.currStep == Steps.ADDRESS_STEP) {
+                if (!user.address){
+                    user.address = payload.event.text;
+                }
             }
-            else if (currStep == Steps.SUMMARY_STEP) 
+
+            // STEP CODE
+            if (user.currStep == Steps.INIT_STEP)
             {
+                var args = payload.event.text.split(" ");
+
+                args.forEach(function(arg) {
+                    if (arg.includes("type:")) {
+                        user.typePizza = arg.replace('type:', '');
+                    }
+                    else if (arg.includes("topping:")) {
+                        user.toppings = arg.replace('topping:', '');
+                    }
+                    else if (arg.includes("address:")) {
+                        user.address = arg.replace('address:', '');
+                    }
+                });
+                user.currStep = Steps.TYPE_STEP;
+            }
+            if (user.currStep == Steps.TYPE_STEP) 
+            {
+                if (!user.typePizza) {
+                    msg = createMessage(payload.event, 
+                        "You didn't tell me what type of pizza you would like. What type of pizza would you like?");
+                } else {
+                    user.currStep = Steps.TOPPINGS_STEP;
+                }
+            }
+            if (user.currStep == Steps.TOPPINGS_STEP) 
+            {
+                if (!user.toppings) {
+                    msg = createMessage(payload.event, 
+                        "You didn't tell me what toppings you would like. What toppings would you like?");
+                } else {
+                    user.currStep = Steps.ADDRESS_STEP;
+                }
+            }
+            if (user.currStep == Steps.ADDRESS_STEP) 
+            {
+                if (!user.address) {
+                    msg = createMessage(payload.event, 
+                        "You didn't tell me your address. What is your address?");
+                } else {
+                    user.currStep = Steps.SUMMARY_STEP;
+                }
+            }
+            if (user.currStep == Steps.SUMMARY_STEP) 
+            {
+                msg = createMessage(payload.event,
+                    "Your order of a " + user.typePizza + " pizza with " + user.toppings + " will be delivered to " + user.address);
                 
+                user.currStep = Steps.INIT_STEP;
             }
             // Create the message you want the bot to say
-            msg = createMessage(payload.event, `Echo: ${payload.event.text}`);
+            //msg = createMessage(payload.event, `Echo: ${payload.event.text}`);
     
             sendMessage(msg);
         }
