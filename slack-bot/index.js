@@ -3,16 +3,30 @@ const express = require('express');
 const request = require('request');
 const path = require('path');
 const { create } = require('domain');
+const MongoClient = require('mongodb').MongoClient;
+
+const ENV_FILE = path.join(__dirname, '.env');
+require('dotenv').config({ path: ENV_FILE });
 
 const app = express();
 app.use(express.json());
 const PORT = 3000;
 
-const ENV_FILE = path.join(__dirname, '.env');
-require('dotenv').config({ path: ENV_FILE });
+const databaseName = "testDB";
+const mongo_url = `mongodb+srv://main_user:${ process.env.MONGO_PASSWORD }@career-place-test-clust.u796u.mongodb.net/${ databaseName }?retryWrites=true&w=majority`;
+
+const mongo_client = new MongoClient(mongo_url, { useUnifiedTopology: true });
+var mongoConnect = mongo_client.connect();
 
 const database = {};
 database["botInfo"] = { channel: process.env.CHANNEL};
+
+mongoConnect.then(function(db) {
+    var collection = mongo_client.db(databaseName).collection('botInfo');
+    //collection.insertOne({ channel: process.env.CHANNEL });
+    collection.updateOne({ channel: /[\s\S]*/ }, { $set: {channel: process.env.CHANNEL} });
+    return db;
+});
 
 const Steps = {
     INIT_STEP: 'initStep',
@@ -69,6 +83,18 @@ app.post('/slack/events', (req, res) => {
             }
 
             let user = database[payload.event.user];
+
+            mongoConnect.then(function(db) {
+                var collection = mongo_client.db(databaseName).collection(payload.event.user);
+                console.log(collection);
+                //collection.insertOne({ currStep: Steps.INIT_STEP });
+                collection.updateOne({ currStep: /[\s\S]*/ }, { $set: {currStep: Steps.INIT_STEP} });
+
+                collection.find({currStep: /[\s\S]*/}).toArray(function(err, result){
+                    console.log(result[0].currStep);
+                });
+                return db;
+            });
 
             console.log("Text: ", payload.event.text);
 
@@ -154,6 +180,14 @@ app.post('/slack/events', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Listening on http://localhost:${PORT}`);
 });
+
+// mongo_client.connect(function(err, client) {
+//     const collection = client.db("test").collection("devices");
+//     // perform actions
+
+//     console.log("Connected to mongodb good?????");
+//     client.close();
+// });
 
 function createMessage(payload, msg)
 {
