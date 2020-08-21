@@ -39,7 +39,7 @@ const Steps = {
 // Send beginning message
 sendMessage(createMessage(database["botInfo"], "Hi, my name is PizzaBot, what can I get you?"));
 
-app.post('/slack/events', (req, res) => {
+app.post('/slack/events', async function(req, res){
 
     // Take care of Events API verification only when trying to verify
     if (req.body.type == 'url_verification') {
@@ -84,110 +84,201 @@ app.post('/slack/events', (req, res) => {
 
             let user = database[payload.event.user];
 
-            mongoConnect.then(function(db) {
-                var collection = mongo_client.db(databaseName).collection(payload.event.user);
-                console.log(collection);
-                //collection.insertOne({ currStep: Steps.INIT_STEP });
-                collection.updateOne({ currStep: /[\s\S]*/ }, { $set: {currStep: Steps.INIT_STEP} });
 
-                collection.find({currStep: /[\s\S]*/}).toArray(function(err, result){
-                    console.log(result[0].currStep);
-                });
-                return db;
-            });
+            var collection = mongo_client.db(databaseName).collection('customers');
+            //collection.insertOne({ userId: payload.event.user, currStep: Steps.INIT_STEP });
+            let customer = await collection.find({userId: payload.event.user}).toArray();
+            if (!customer[0]) {
+                collection.insertOne({ userId: payload.event.user, currStep: Steps.INIT_STEP });
+                console.log("Inserting user ", payload.event.user);
 
-            console.log("Text: ", payload.event.text);
+                customer = await collection.find({userId: payload.event.user}).toArray();
+            }
+            //collection.updateOne({ userId: payload.event.user }, { $set: {currStep: Steps.INIT_STEP} });
 
-            // When coming back after sending a message, update the database with the user input
-            if (user.currStep == Steps.TYPE_STEP) {
-                if (!user.typePizza){
-                    user.typePizza = payload.event.text;
+            console.log("currStep before anything else: ", customer[0].currStep);
+
+            if (customer[0].currStep == Steps.TYPE_STEP) {
+                if (!customer[0].typePizza){
+                    //customer.typePizza = payload.event.text;
+                    collection.updateOne({userId: payload.event.user}, {$set: {typePizza: payload.event.text}});
                 }
             }
-            if (user.currStep == Steps.TOPPINGS_STEP) {
-                if (!user.toppings){
-                    user.toppings = payload.event.text;
+            if (customer[0].currStep == Steps.TOPPINGS_STEP) {
+                if (!customer[0].toppings){
+                    //user.toppings = payload.event.text;
+                    collection.updateOne({userId: payload.event.user}, {$set: {toppings: payload.event.text}});
                 }
             }
-            if (user.currStep == Steps.ADDRESS_STEP) {
-                if (!user.address){
-                    user.address = payload.event.text;
+            if (customer[0].currStep == Steps.ADDRESS_STEP) {
+                if (!customer[0].address){
+                    //user.address = payload.event.text;
+                    collection.updateOne({userId: payload.event.user}, {$set: {address: payload.event.text}});
                 }
             }
-
+    
             // STEP CODE
-            if (user.currStep == Steps.INIT_STEP)
+            if (customer[0].currStep == Steps.INIT_STEP)
             {
                 var args = payload.event.text.split(" ");
 
                 args.forEach(function(arg) {
                     if (arg.includes("type:")) {
-                        user.typePizza = arg.replace('type:', '');
+                        var tempType = arg.replace('type:', '');
+                        collection.updateOne({userId: payload.event.user}, {$set: {typePizza: tempType}});
                     }
                     else if (arg.includes("topping:")) {
-                        user.toppings = arg.replace('topping:', '');
+                        var tempTopping = arg.replace('topping:', '');
+                        collection.updateOne({userId: payload.event.user}, {$set: {toppings: tempTopping}});
                     }
                     else if (arg.includes("address:")) {
-                        user.address = arg.replace('address:', '');
+                        var tempAddress = arg.replace('address:', '');
+                        collection.updateOne({userId: payload.event.user}, {$set: {address: tempAddress}});
                     }
                 });
-                user.currStep = Steps.TYPE_STEP;
+                collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.TYPE_STEP}});
             }
-            if (user.currStep == Steps.TYPE_STEP) 
+
+            customer = await collection.find({userId: payload.event.user}).toArray();
+
+            if (customer[0].currStep == Steps.TYPE_STEP) 
             {
-                if (!user.typePizza) {
+                if (!customer[0].typePizza) {
                     msg = createMessage(payload.event, 
                         "You didn't tell me what type of pizza you would like. What type of pizza would you like?");
+                    console.log("message: ", msg);
                 } else {
-                    user.currStep = Steps.TOPPINGS_STEP;
+                    collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.TOPPINGS_STEP}});
                 }
             }
-            if (user.currStep == Steps.TOPPINGS_STEP) 
+
+            customer = await collection.find({userId: payload.event.user}).toArray();
+
+            if (customer[0].currStep == Steps.TOPPINGS_STEP) 
             {
-                if (!user.toppings) {
+                if (!customer[0].toppings) {
                     msg = createMessage(payload.event, 
                         "You didn't tell me what toppings you would like. What toppings would you like?");
                 } else {
-                    user.currStep = Steps.ADDRESS_STEP;
+                    collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.ADDRESS_STEP}});
                 }
             }
-            if (user.currStep == Steps.ADDRESS_STEP) 
+
+            customer = await collection.find({userId: payload.event.user}).toArray();
+
+            if (customer[0].currStep == Steps.ADDRESS_STEP) 
             {
-                if (!user.address) {
+                if (!customer[0].address) {
                     msg = createMessage(payload.event, 
                         "You didn't tell me your address. What is your address?");
                 } else {
-                    user.currStep = Steps.SUMMARY_STEP;
+                    collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.SUMMARY_STEP}});
                 }
             }
-            if (user.currStep == Steps.SUMMARY_STEP) 
+
+            customer = await collection.find({userId: payload.event.user}).toArray();
+
+            if (customer[0].currStep == Steps.SUMMARY_STEP) 
             {
                 msg = createMessage(payload.event,
-                    "Your order of a " + user.typePizza + " pizza with " + user.toppings + " will be delivered to " + user.address);
+                    "Your order of a " + customer[0].typePizza + " pizza with " + customer[0].toppings + " will be delivered to " + customer[0].address);
                 
-                user.currStep = Steps.INIT_STEP;
+                    collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.INIT_STEP}});
             }
-            // Create the message you want the bot to say
-            //msg = createMessage(payload.event, `Echo: ${payload.event.text}`);
     
             sendMessage(msg);
+
+            // // When coming back after sending a message, update the database with the user input
+            // if (user.currStep == Steps.TYPE_STEP) {
+            //     if (!user.typePizza){
+            //         user.typePizza = payload.event.text;
+            //     }
+            // }
+            // if (user.currStep == Steps.TOPPINGS_STEP) {
+            //     if (!user.toppings){
+            //         user.toppings = payload.event.text;
+            //     }
+            // }
+            // if (user.currStep == Steps.ADDRESS_STEP) {
+            //     if (!user.address){
+            //         user.address = payload.event.text;
+            //     }
+            // }
+
+            // // STEP CODE
+            // if (user.currStep == Steps.INIT_STEP)
+            // {
+            //     var args = payload.event.text.split(" ");
+
+            //     args.forEach(function(arg) {
+            //         if (arg.includes("type:")) {
+            //             user.typePizza = arg.replace('type:', '');
+            //         }
+            //         else if (arg.includes("topping:")) {
+            //             user.toppings = arg.replace('topping:', '');
+            //         }
+            //         else if (arg.includes("address:")) {
+            //             user.address = arg.replace('address:', '');
+            //         }
+            //     });
+            //     user.currStep = Steps.TYPE_STEP;
+            // }
+            // if (user.currStep == Steps.TYPE_STEP) 
+            // {
+            //     if (!user.typePizza) {
+            //         msg = createMessage(payload.event, 
+            //             "You didn't tell me what type of pizza you would like. What type of pizza would you like?");
+            //     } else {
+            //         user.currStep = Steps.TOPPINGS_STEP;
+            //     }
+            // }
+            // if (user.currStep == Steps.TOPPINGS_STEP) 
+            // {
+            //     if (!user.toppings) {
+            //         msg = createMessage(payload.event, 
+            //             "You didn't tell me what toppings you would like. What toppings would you like?");
+            //     } else {
+            //         user.currStep = Steps.ADDRESS_STEP;
+            //     }
+            // }
+            // if (user.currStep == Steps.ADDRESS_STEP) 
+            // {
+            //     if (!user.address) {
+            //         msg = createMessage(payload.event, 
+            //             "You didn't tell me your address. What is your address?");
+            //     } else {
+            //         user.currStep = Steps.SUMMARY_STEP;
+            //     }
+            // }
+            // if (user.currStep == Steps.SUMMARY_STEP) 
+            // {
+            //     msg = createMessage(payload.event,
+            //         "Your order of a " + user.typePizza + " pizza with " + user.toppings + " will be delivered to " + user.address);
+                
+            //     user.currStep = Steps.INIT_STEP;
+            // }
+            // // Create the message you want the bot to say
+            // //msg = createMessage(payload.event, `Echo: ${payload.event.text}`);
+    
+            // sendMessage(msg);
         }
     }
 
     res.sendStatus(200);
 });
 
-app.listen(PORT, () => {
-    console.log(`Listening on http://localhost:${PORT}`);
+
+mongo_client.connect(function(err, client) {
+    const collection = client.db("test").collection("devices");
+    // perform actions
+
+    console.log("Connected to mongodb good?????");
+
+    app.listen(PORT, () => {
+        console.log(`Listening on http://localhost:${PORT}`);
+    });
+
 });
-
-// mongo_client.connect(function(err, client) {
-//     const collection = client.db("test").collection("devices");
-//     // perform actions
-
-//     console.log("Connected to mongodb good?????");
-//     client.close();
-// });
 
 function createMessage(payload, msg)
 {
