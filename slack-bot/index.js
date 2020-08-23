@@ -88,6 +88,9 @@ app.post('/slack/events', async function(req, res){
             var collection = mongo_client.db(databaseName).collection('customers');
             //collection.insertOne({ userId: payload.event.user, currStep: Steps.INIT_STEP });
             let customer = await collection.find({userId: payload.event.user}).toArray();
+
+            console.log("first tiem getting customer", customer);
+
             if (!customer[0]) {
                 collection.insertOne({ userId: payload.event.user, currStep: Steps.INIT_STEP });
                 console.log("Inserting user ", payload.event.user);
@@ -116,27 +119,29 @@ app.post('/slack/events', async function(req, res){
                     collection.updateOne({userId: payload.event.user}, {$set: {address: payload.event.text}});
                 }
             }
+
+            customer = await collection.find({userId: payload.event.user}).toArray();
     
             // STEP CODE
             if (customer[0].currStep == Steps.INIT_STEP)
             {
                 var args = payload.event.text.split(" ");
 
-                args.forEach(function(arg) {
+                args.forEach(async function(arg) {
                     if (arg.includes("type:")) {
                         var tempType = arg.replace('type:', '');
-                        collection.updateOne({userId: payload.event.user}, {$set: {typePizza: tempType}});
+                        await collection.updateOne({userId: payload.event.user}, {$set: {typePizza: tempType}});
                     }
                     else if (arg.includes("topping:")) {
                         var tempTopping = arg.replace('topping:', '');
-                        collection.updateOne({userId: payload.event.user}, {$set: {toppings: tempTopping}});
+                        await collection.updateOne({userId: payload.event.user}, {$set: {toppings: tempTopping}});
                     }
                     else if (arg.includes("address:")) {
                         var tempAddress = arg.replace('address:', '');
-                        collection.updateOne({userId: payload.event.user}, {$set: {address: tempAddress}});
+                        await collection.updateOne({userId: payload.event.user}, {$set: {address: tempAddress}});
                     }
                 });
-                collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.TYPE_STEP}});
+                await collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.TYPE_STEP}});
             }
 
             customer = await collection.find({userId: payload.event.user}).toArray();
@@ -144,11 +149,11 @@ app.post('/slack/events', async function(req, res){
             if (customer[0].currStep == Steps.TYPE_STEP) 
             {
                 if (!customer[0].typePizza) {
-                    msg = createMessage(payload.event, 
-                        "You didn't tell me what type of pizza you would like. What type of pizza would you like?");
+                    msg = sendMessage(createMessage(payload.event, 
+                        "You didn't tell me what type of pizza you would like. What type of pizza would you like?"));
                     console.log("message: ", msg);
                 } else {
-                    collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.TOPPINGS_STEP}});
+                    await collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.TOPPINGS_STEP}});
                 }
             }
 
@@ -157,10 +162,10 @@ app.post('/slack/events', async function(req, res){
             if (customer[0].currStep == Steps.TOPPINGS_STEP) 
             {
                 if (!customer[0].toppings) {
-                    msg = createMessage(payload.event, 
-                        "You didn't tell me what toppings you would like. What toppings would you like?");
+                    msg = sendMessage(createMessage(payload.event, 
+                        "You didn't tell me what toppings you would like. What toppings would you like?"));
                 } else {
-                    collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.ADDRESS_STEP}});
+                    await collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.ADDRESS_STEP}});
                 }
             }
 
@@ -168,11 +173,12 @@ app.post('/slack/events', async function(req, res){
 
             if (customer[0].currStep == Steps.ADDRESS_STEP) 
             {
+                console.log("GOT TO ADDRESS");
                 if (!customer[0].address) {
-                    msg = createMessage(payload.event, 
-                        "You didn't tell me your address. What is your address?");
+                    msg = sendMessage(createMessage(payload.event, 
+                        "You didn't tell me your address. What is your address?"));
                 } else {
-                    collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.SUMMARY_STEP}});
+                    await collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.SUMMARY_STEP}});
                 }
             }
 
@@ -180,13 +186,15 @@ app.post('/slack/events', async function(req, res){
 
             if (customer[0].currStep == Steps.SUMMARY_STEP) 
             {
-                msg = createMessage(payload.event,
-                    "Your order of a " + customer[0].typePizza + " pizza with " + customer[0].toppings + " will be delivered to " + customer[0].address);
+                msg = sendMessage(createMessage(payload.event,
+                    "Your order of a " + customer[0].typePizza + " pizza with " + customer[0].toppings + " will be delivered to " + customer[0].address));
                 
-                    collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.INIT_STEP}});
+                await collection.updateOne({userId: payload.event.user}, {$set: {currStep: Steps.INIT_STEP}});
+
+                await collection.updateMany({userId: payload.event.user}, {$unset: {typePizza: "", toppings: "", address: ""}});
             }
     
-            sendMessage(msg);
+            //sendMessage(msg);
 
             // // When coming back after sending a message, update the database with the user input
             // if (user.currStep == Steps.TYPE_STEP) {
