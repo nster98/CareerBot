@@ -1,3 +1,5 @@
+// db.js
+// Code to connect to the mongo database
 
 /* jshint esversion: 8 */
 
