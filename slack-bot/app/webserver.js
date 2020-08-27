@@ -82,6 +82,9 @@ class WebServer {
 
       customerCollection.insertOne({
         name: 'nick-' + (new Date()).getTime(),
+        size: null,
+        toppings: null,
+        address: null,
       }, (errCreateCustomer, respCreateCustomer) => {
         if (errCreateCustomer) {
           console.log('errCreateCustomer = ', errCreateCustomer);
