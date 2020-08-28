@@ -23,11 +23,6 @@ async function orderPizza(payload, customerCollection, response) {
 
         customer = await customerCollection.find({ userId: payload.event.user }).toArray();
     }
-
-    if (!customer[0].toppings) {
-        console.log("Resetting, oopsies");
-        //await customerCollection.updateOne({ userId: payload.event.user }, { $push: {toppings: "" }});
-    }
     //collection.updateOne({ userId: payload.event.user }, { $set: {currStep: Steps.INIT_STEP} });
 
     //console.log("currStep before anything else: ", customer[0].currStep);
@@ -68,7 +63,7 @@ async function orderPizza(payload, customerCollection, response) {
             }
             else if (arg.includes("topping:")) {
                 var tempTopping = arg.replace('topping:', '');
-                await customerCollection.updateOne({ userId: payload.event.user }, { $addToSet: { toppings: payload.event.text } }); // NJC - use either await or callback to wait until complete
+                await customerCollection.updateOne({ userId: payload.event.user }, { $addToSet: { toppings: tempTopping } }); // NJC - use either await or callback to wait until complete
             }
             else if (arg.includes("address:")) {
                 var tempAddress = arg.replace('address:', '');
